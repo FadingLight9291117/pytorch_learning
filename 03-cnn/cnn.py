@@ -4,6 +4,7 @@ from torch.autograd import Variable
 import torch.utils.data as Data
 import torchvision
 import matplotlib.pyplot as plt
+import torch.nn.functional as F
 
 torch.manual_seed(1)
 
@@ -20,6 +21,13 @@ train_data = torchvision.datasets.MNIST(
     transform=torchvision.transforms.ToTensor(),
     download=DOWNLOAD_MNIST
 )
+
+test_data = torchvision.datasets.MNIST(root='./mnist/', train=False)
+
+train_loader = Data.DataLoader(dataset=train_data, batch_size=BATCH_SIZE, shuffle=True)
+
+test_x = Variable(torch.unsqueeze(test_data.test_data, dim=1), volatile=True).type(torch.FloatTensor)[:200] / 255
+test_y = test_data.test_labels[:200]
 
 
 # CNN 模型
@@ -54,3 +62,23 @@ class CNN(nn.Module):
 
 cnn = CNN()
 print(cnn)
+
+optimizer = torch.optim.Adam(cnn.parameters(), lr=LR)
+loss_func = nn.CrossEntropyLoss()
+
+for epoch in range(EPOCH):
+    for step, (x, y) in enumerate(train_loader):
+        b_x = Variable(x)
+        b_y = Variable(y)
+
+        output = cnn(b_x)
+        loss = loss_func(output, b_y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+test_output = cnn(test_x[:10])
+pred_y = torch.max(test_output, 1)[1].data.numpy().squeeze()
+print(pred_y, 'prediction number')
+print(test_y[:10].numpy(), 'real number')
+
